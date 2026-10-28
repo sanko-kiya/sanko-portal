@@ -1,0 +1,602 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>授業ポータル | CLASSROOM 3D</title>
+  <meta name="description" content="授業資料や教材へのリンクをまとめた3D授業ポータル">
+
+  <style>
+    :root {
+      --bg: #080d18;
+      --panel: rgba(18, 28, 48, 0.88);
+      --text: #f3f7ff;
+      --muted: #98a8c4;
+      --cyan: #64e7ff;
+      --purple: #a58bff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Noto Sans JP", sans-serif;
+      overflow-x: hidden;
+    }
+
+    #scene {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .overlay {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      padding: 32px clamp(18px, 5vw, 72px) 60px;
+      pointer-events: none;
+    }
+
+    header, main, footer, .controls, .course-list {
+      pointer-events: auto;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .logo {
+      font-size: 13px;
+      letter-spacing: 3px;
+      font-weight: 800;
+      color: var(--cyan);
+    }
+
+    .status {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .hero {
+      margin-top: 70px;
+      max-width: 700px;
+    }
+
+    .eyebrow {
+      color: var(--cyan);
+      font-size: 12px;
+      letter-spacing: 3px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 14px 0;
+      font-size: clamp(38px, 7vw, 76px);
+      line-height: 1.15;
+      letter-spacing: -2px;
+    }
+
+    .gradient {
+      background: linear-gradient(100deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .intro {
+      max-width: 520px;
+      color: var(--muted);
+      line-height: 1.9;
+      font-size: 14px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 28px 0 18px;
+    }
+
+    input, .filter {
+      border: 1px solid rgba(160, 190, 255, .2);
+      background: rgba(13, 22, 39, .88);
+      color: var(--text);
+      padding: 11px 15px;
+      border-radius: 9px;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    input {
+      width: min(100%, 300px);
+      outline: none;
+    }
+
+    input:focus { border-color: var(--cyan); }
+
+    .filter {
+      cursor: pointer;
+    }
+
+    .filter.active {
+      color: var(--cyan);
+      border-color: var(--cyan);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+
+    /* HTMLのカード一覧。3Dが使えない場合も教材へアクセス可能 */
+    .course-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      max-width: 1050px;
+      margin-top: 12px;
+    }
+
+    .course {
+      display: block;
+      padding: 20px;
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid rgba(160, 190, 255, .16);
+      background: var(--panel);
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      transition: border-color .2s, transform .2s;
+    }
+
+    .course:hover {
+      border-color: var(--cyan);
+      transform: translateY(-3px);
+    }
+
+    .course .number {
+      color: var(--cyan);
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    .course h2 {
+      font-size: 17px;
+      margin: 12px 0 7px;
+    }
+
+    .course p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    .course .tag {
+      display: inline-block;
+      margin-top: 14px;
+      font-size: 11px;
+      color: #c4b5fd;
+    }
+
+    footer {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 35px;
+    }
+
+    @media (max-width: 760px) {
+      .hero { margin-top: 48px; }
+      .course-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .overlay { padding-top: 22px; }
+    }
+
+    @media (max-width: 480px) {
+      .course-list { grid-template-columns: 1fr; }
+      .status { display: none; }
+      h1 { letter-spacing: -1px; }
+    }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js"
+    }
+  }
+  </script>
+</head>
+
+<body>
+  <div id="scene" aria-hidden="true"></div>
+
+  <div class="overlay">
+    <header>
+      <div class="logo">CLASSROOM 3D</div>
+      <div class="status">LEARNING PORTAL / 2026</div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow">YOUR LEARNING SPACE</div>
+        <h1>学びの入り口を<br><span class="gradient">3Dで探索する。</span></h1>
+        <p class="intro">
+          授業の教材・課題・参考資料をひとつに。
+          興味のある分野を選んで、学習を始めましょう。
+        </p>
+      </section>
+
+      <section aria-label="授業を探す">
+        <div class="controls">
+          <input id="search" type="search" placeholder="授業名・キーワードで検索">
+          <button class="filter active" data-category="すべて">すべて</button>
+          <button class="filter" data-category="Web">Web制作</button>
+          <button class="filter" data-category="Programming">プログラミング</button>
+          <button class="filter" data-category="Design">設計・資格</button>
+        </div>
+
+        <p class="hint">カードをクリックして授業へ移動できます。</p>
+        <div class="course-list" id="courseList"></div>
+      </section>
+    </main>
+
+    <footer>CLASSROOM 3D — 授業資料へのリンク集</footer>
+  </div>
+
+  <script type="module">
+    import * as THREE from "three";
+
+    // ここに授業名・説明・URLを登録してください
+    const courses = [
+      {
+        title: "HTML / CSS",
+        category: "Web",
+        description: "Webページの構造とデザインを学ぶ",
+        url: "https://example.com/html-css",
+        color: "#29c9ff"
+      },
+      {
+        title: "JavaScript",
+        category: "Programming",
+        description: "動きのあるWebサイトを作る",
+        url: "https://example.com/javascript",
+        color: "#9277ff"
+      },
+      {
+        title: "Python",
+        category: "Programming",
+        description: "文法の基礎からプログラミングへ",
+        url: "https://example.com/python",
+        color: "#44ddb0"
+      },
+      {
+        title: "Three.js / 3D",
+        category: "Web",
+        description: "ブラウザ上で3D表現を制作する",
+        url: "https://example.com/threejs",
+        color: "#ff9a63"
+      },
+      {
+        title: "システム設計",
+        category: "Design",
+        description: "要件定義・画面設計・DB設計",
+        url: "https://example.com/system-design",
+        color: "#ff6fae"
+      },
+      {
+        title: "ITパスポート",
+        category: "Design",
+        description: "過去問と解説PDFで試験対策",
+        url: "https://example.com/itpassport",
+        color: "#e8d76b"
+      }
+    ];
+
+    // HTMLカードを生成
+    const list = document.querySelector("#courseList");
+    const search = document.querySelector("#search");
+    let selectedCategory = "すべて";
+
+    function renderCourses() {
+      const keyword = search.value.trim().toLowerCase();
+
+      const filtered = courses.filter(course => {
+        const matchesCategory =
+          selectedCategory === "すべて" ||
+          course.category === selectedCategory;
+
+        const text = (
+          course.title + " " +
+          course.description + " " +
+          course.category
+        ).toLowerCase();
+
+        return matchesCategory && text.includes(keyword);
+      });
+
+      list.replaceChildren();
+
+      filtered.forEach((course, index) => {
+        const a = document.createElement("a");
+        a.className = "course";
+        a.href = course.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+
+        const number = document.createElement("div");
+        number.className = "number";
+        number.textContent = `COURSE ${(index + 1).toString().padStart(2, "0")}`;
+
+        const title = document.createElement("h2");
+        title.textContent = course.title;
+
+        const desc = document.createElement("p");
+        desc.textContent = course.description;
+
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = course.category;
+
+        a.append(number, title, desc, tag);
+        list.append(a);
+      });
+    }
+
+    search.addEventListener("input", renderCourses);
+
+    document.querySelectorAll(".filter").forEach(button => {
+      button.addEventListener("click", () => {
+        selectedCategory = button.dataset.category;
+
+        document.querySelectorAll(".filter").forEach(b => {
+          b.classList.toggle("active", b === button);
+        });
+
+        renderCourses();
+      });
+    });
+
+    renderCourses();
+
+    // ---------- Three.js 背景 ----------
+    const container = document.querySelector("#scene");
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x080d18, 0.035);
+
+    const camera = new THREE.PerspectiveCamera(
+      55,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      100
+    );
+    camera.position.set(0, 1.5, 10);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    container.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0x8299cc, 2));
+
+    const light1 = new THREE.PointLight(0x25cfff, 35, 25);
+    light1.position.set(-4, 3, 4);
+    scene.add(light1);
+
+    const light2 = new THREE.PointLight(0x8762ff, 30, 25);
+    light2.position.set(5, -1, 3);
+    scene.add(light2);
+
+    // 奥行きのあるグリッド
+    const grid = new THREE.GridHelper(40, 40, 0x25436a, 0x15243c);
+    grid.position.y = -2.5;
+    scene.add(grid);
+
+    // 背景の星
+    const starCount = 500;
+    const positions = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 35;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 22;
+      positions[i * 3 + 2] = -Math.random() * 24;
+    }
+
+    const starGeometry = new THREE.BufferGeometry();
+    starGeometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(positions, 3)
+    );
+
+    const stars = new THREE.Points(
+      starGeometry,
+      new THREE.PointsMaterial({
+        color: 0x9bdcff,
+        size: 0.035,
+        transparent: true,
+        opacity: 0.8
+      })
+    );
+    scene.add(stars);
+
+    // 3Dカード用のグループ
+    const cardGroup = new THREE.Group();
+    scene.add(cardGroup);
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const clickableMeshes = [];
+    const clock = new THREE.Clock();
+
+    // カードの文字をCanvasで描画し、テクスチャにする
+    function createCardTexture(course, index) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 300;
+
+      const ctx = canvas.getContext("2d");
+      const gradient = ctx.createLinearGradient(0, 0, 512, 300);
+      gradient.addColorStop(0, "#172944");
+      gradient.addColorStop(1, "#0b1222");
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 512, 300);
+
+      ctx.strokeStyle = course.color;
+      ctx.lineWidth = 5;
+      ctx.strokeRect(5, 5, 502, 290);
+
+      ctx.fillStyle = course.color;
+      ctx.font = "bold 22px sans-serif";
+      ctx.fillText(`COURSE ${(index + 1).toString().padStart(2, "0")}`, 28, 45);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 38px sans-serif";
+      ctx.fillText(course.title.slice(0, 15), 28, 130);
+
+      ctx.fillStyle = "#b9c8e0";
+      ctx.font = "20px sans-serif";
+      ctx.fillText(course.category, 28, 185);
+
+      ctx.fillStyle = course.color;
+      ctx.font = "18px sans-serif";
+      ctx.fillText("CLICK TO OPEN  →", 28, 255);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    }
+
+    courses.forEach((course, index) => {
+      const material = new THREE.MeshBasicMaterial({
+        map: createCardTexture(course, index),
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.5, 1.46),
+        material
+      );
+
+      // 3列に配置して、奥行きも少し変える
+      const column = index % 3;
+      const row = Math.floor(index / 3);
+
+      mesh.position.set(
+        (column - 1) * 2.8,
+        0.4 - row * 1.8,
+        -row * 0.8
+      );
+
+      mesh.rotation.y = (column - 1) * -0.12;
+      mesh.userData.course = course;
+      mesh.userData.index = index;
+
+      cardGroup.add(mesh);
+      clickableMeshes.push(mesh);
+    });
+
+    // マウス移動に合わせて視点をゆっくり動かす
+    let targetX = 0;
+    let targetY = 0;
+    let pointerDown = false;
+    let startX = 0;
+    let startY = 0;
+    let moved = false;
+
+    window.addEventListener("pointermove", event => {
+      targetX = (event.clientX / window.innerWidth - 0.5) * 0.7;
+      targetY = (event.clientY / window.innerHeight - 0.5) * 0.35;
+
+      pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      if (pointerDown &&
+          (Math.abs(event.clientX - startX) > 5 ||
+           Math.abs(event.clientY - startY) > 5)) {
+        moved = true;
+      }
+    });
+
+    renderer.domElement.addEventListener("pointerdown", event => {
+      pointerDown = true;
+      moved = false;
+      startX = event.clientX;
+      startY = event.clientY;
+    });
+
+    window.addEventListener("pointerup", () => {
+      pointerDown = false;
+    });
+
+    renderer.domElement.addEventListener("click", () => {
+      if (moved) return;
+
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(clickableMeshes);
+
+      if (hits.length > 0) {
+        const course = hits[0].object.userData.course;
+        window.open(course.url, "_blank", "noopener,noreferrer");
+      }
+    });
+
+    renderer.domElement.addEventListener("pointermove", () => {
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(clickableMeshes);
+
+      renderer.domElement.style.cursor =
+        hits.length > 0 ? "pointer" : "default";
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const t = clock.getElapsedTime();
+
+      cardGroup.children.forEach((mesh, index) => {
+        mesh.position.y +=
+          Math.sin(t * 0.7 + index * 0.8) * 0.0018;
+
+        mesh.rotation.z =
+          Math.sin(t * 0.4 + index) * 0.012;
+      });
+
+      stars.rotation.y = Math.sin(t * 0.05) * 0.08;
+
+      camera.position.x +=
+        (targetX - camera.position.x) * 0.025;
+
+      camera.position.y +=
+        (1.5 - targetY - camera.position.y) * 0.025;
+
+      camera.lookAt(0, 0, -1);
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
+    });
+  </script>
+</body>
+</html>
