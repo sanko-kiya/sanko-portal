@@ -137,7 +137,6 @@
       margin: 0 0 10px;
     }
 
-    /* HTMLのカード一覧。3Dが使えない場合も教材へアクセス可能 */
     .course-list {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -272,13 +271,15 @@
         url: "https://example.com/javascript",
         color: "#9277ff"
       },
+      */
       {
         title: "Python",
         category: "Programming",
-        description: "文法の基礎からプログラミングへ",
-        url: "https://example.com/python",
+        description: "アルゴリズム基礎",
+        url: "https://script.google.com/a/macros/sankogakuen.jp/s/AKfycbwAvQaZ9kq_gOcUS-_mAHfajbPm6tui5ol8rAibMbofNtqbwH9R22CjYoAVkxDdAO0y_w/exec",
         color: "#44ddb0"
       },
+      /*
       {
         title: "Three.js / 3D",
         category: "Web",
@@ -296,7 +297,6 @@
       }
     ];
 
-    // HTMLカードを生成
     const list = document.querySelector("#courseList");
     const search = document.querySelector("#search");
     let selectedCategory = "すべて";
